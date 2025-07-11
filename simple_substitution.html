@@ -31,6 +31,24 @@
             padding-bottom: 0.5rem;
             margin-bottom: 1.5rem;
         }
+        .controls-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        #new-problem-button {
+            padding: 0.6rem 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #new-problem-button:hover {
+            background-color: #0069d9;
+        }
         .section {
             margin-bottom: 2.5rem;
         }
@@ -68,15 +86,15 @@
         }
         .bar {
             width: 80%;
-            background-color: #4CAF50;
+            background-color: #4CAF50; /* Green */
             border-radius: 3px 3px 0 0;
             transition: background-color 0.2s;
         }
         .bar:hover {
-            background-color: #45a049;
+            background-color: #45a049; /* Darker Green */
         }
         #plaintext-freq-chart .bar {
-            background-color: #6c757d;
+            background-color: #6c757d; /* Dark Gray */
         }
         #plaintext-freq-chart .bar:hover {
             background-color: #5a6268;
@@ -107,13 +125,13 @@
             transition: background-color 0.2s;
         }
         #hint-button {
-            background-color: #4CAF50;
+            background-color: #4CAF50; /* Green */
         }
         #hint-button:hover {
-            background-color: #45a049;
+            background-color: #45a049; /* Darker Green */
         }
         #hint2-button {
-            background-color: #6c757d;
+            background-color: #6c757d; /* Gray */
             margin-left: 10px;
         }
         #hint2-button:hover {
@@ -138,7 +156,7 @@
         }
         .key-entry label {
             font-weight: bold;
-            color: #4CAF50;
+            color: #4CAF50; /* Green */
             margin-bottom: 4px;
         }
         .key-entry input {
@@ -150,42 +168,15 @@
             border-radius: 4px;
             text-transform: uppercase;
         }
-        .suggestion-container {
-            margin-top: 3rem;
-            text-align: center;
-        }
-        #suggestion-form {
-            display: none;
-            margin-top: 1rem;
-        }
-        #suggestion-text {
-            width: 100%;
-            min-height: 100px;
-            padding: 0.75rem;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 1rem;
-            box-sizing: border-box;
-            margin-bottom: 1rem;
-            resize: vertical;
-        }
-        #submit-suggestion {
-            padding: 0.6rem 1.5rem;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #fff;
-            background-color: #007bff;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>単一換字式暗号 解読体験</h1>
-    <!-- Sections from before -->
+    <div class="controls-container">
+        <button id="new-problem-button">新しい問題</button>
+    </div>
     <div class="section">
         <h2>暗号文</h2>
         <div id="ciphertext" class="text-box"></div>
@@ -213,24 +204,19 @@
         <h2>復号文</h2>
         <div id="decrypted-text" class="text-box"></div>
     </div>
-
-    <!-- Suggestion Box Section -->
-    <div class="suggestion-container">
-        <button id="show-suggestion-box">改善提案</button>
-        <div id="suggestion-form">
-            <textarea id="suggestion-text" placeholder="このツールをより良くするためのアイデアを自由にお書きください。"></textarea>
-            <button id="submit-suggestion">送信</button>
-        </div>
-        <p id="suggestion-thanks" style="display: none; color: green; font-weight: bold;">ご提案ありがとうございます！</p>
-    </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Constants and State ---
     const PLAINTEXT = "CRYPTOGRAPHY IS THE PRACTICE AND STUDY OF TECHNIQUES FOR SECURE COMMUNICATION IN THE PRESENCE OF THIRD PARTIES CALLED ADVERSARIES. MORE GENERALLY, IT IS ABOUT CONSTRUCTING AND ANALYZING PROTOCOLS THAT PREVENT THIRD PARTIES OR THE PUBLIC FROM READING PRIVATE MESSAGES. MODERN CRYPTOGRAPHY EXISTS AT THE INTERSECTION OF THE DISCIPLINES OF MATHEMATICS, COMPUTER SCIENCE, ELECTRICAL ENGINEERING, COMMUNICATION SCIENCE, AND PHYSICS.";
     const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let secretKey = {}, reverseSecretKey = {}, userKey = {}, inputs = {};
+    let secretKey = {};
+    let reverseSecretKey = {};
+    const userKey = {};
+    const inputs = {};
 
+    // --- DOM Elements ---
     const ciphertextDiv = document.getElementById('ciphertext');
     const freqChartDiv = document.getElementById('freq-chart');
     const keyMapGridDiv = document.getElementById('key-map-grid');
@@ -238,43 +224,61 @@ document.addEventListener('DOMContentLoaded', () => {
     const hintButton = document.getElementById('hint-button');
     const hint2Button = document.getElementById('hint2-button');
     const plaintextFreqSection = document.getElementById('plaintext-freq-section');
-    const showSuggestionBtn = document.getElementById('show-suggestion-box');
-    const suggestionForm = document.getElementById('suggestion-form');
-    const suggestionText = document.getElementById('suggestion-text');
-    const submitSuggestionBtn = document.getElementById('submit-suggestion');
-    const suggestionThanks = document.getElementById('suggestion-thanks');
+    const newProblemButton = document.getElementById('new-problem-button');
 
+    // --- Initialization ---
     function initialize() {
         generateKeys();
         const ciphertext = applyKey(PLAINTEXT, secretKey);
         ciphertextDiv.textContent = ciphertext;
+
         const frequencies = calculateFrequencies(ciphertext);
         drawFrequencyChart(frequencies, freqChartDiv, true);
+        
         const sortedByFreq = Object.entries(frequencies).sort((a, b) => b[1] - a[1]);
+        
         createKeyMapGrid();
         updateDecryption();
+
         hintButton.addEventListener('click', () => giveHint(sortedByFreq));
         hint2Button.addEventListener('click', showPlaintextFreq);
-        showSuggestionBtn.addEventListener('click', () => {
-            suggestionForm.style.display = 'block';
-            showSuggestionBtn.style.display = 'none';
-        });
-        submitSuggestionBtn.addEventListener('click', () => {
-            const suggestion = suggestionText.value;
-            if (suggestion) {
-                console.log("--- 改善提案 ---");
-                console.log(suggestion);
-                suggestionText.value = '';
-                suggestionForm.style.display = 'none';
-                suggestionThanks.style.display = 'block';
-                setTimeout(() => {
-                    suggestionThanks.style.display = 'none';
-                    showSuggestionBtn.style.display = 'inline-block';
-                }, 3000);
-            }
-        });
+        newProblemButton.addEventListener('click', resetApplication);
     }
 
+    function resetApplication() {
+        // Reset keys and user progress
+        secretKey = {};
+        reverseSecretKey = {};
+        Object.keys(userKey).forEach(key => delete userKey[key]);
+
+        // Clear input fields
+        Object.values(inputs).forEach(input => input.value = '');
+
+        // Re-initialize the application state
+        generateKeys();
+        const ciphertext = applyKey(PLAINTEXT, secretKey);
+        ciphertextDiv.textContent = ciphertext;
+
+        const frequencies = calculateFrequencies(ciphertext);
+        drawFrequencyChart(frequencies, freqChartDiv, true);
+
+        // Reset hint buttons
+        hintButton.disabled = false;
+        hintButton.textContent = 'ヒント';
+        hint2Button.disabled = false;
+        plaintextFreqSection.style.display = 'none';
+
+        // Update event listeners with new frequency data
+        const sortedByFreq = Object.entries(frequencies).sort((a, b) => b[1] - a[1]);
+        // Clear old listeners before adding new ones to prevent memory leaks
+        const newHintButton = hintButton.cloneNode(true);
+        hintButton.parentNode.replaceChild(newHintButton, hintButton);
+        newHintButton.addEventListener('click', () => giveHint(sortedByFreq));
+        
+        updateDecryption();
+    }
+
+    // --- Key Generation ---
     function generateKeys() {
         const shuffledAlphabet = ALPHABET.split('').sort(() => Math.random() - 0.5);
         ALPHABET.split('').forEach((char, index) => {
@@ -288,6 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return text.split('').map(char => key[char] || char).join('');
     }
 
+    // --- Frequency Analysis ---
     function calculateFrequencies(text) {
         const frequencies = {};
         for (const char of text) {
@@ -304,11 +309,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sortByFreq) {
             sorted = Object.entries(frequencies).sort((a, b) => b[1] - a[1]);
         } else {
-            sorted = Object.entries(frequencies).sort((a, b) => b[1] - a[1]);
+            const freqOrder = 'ETAOINSHRDLCUMWFGYPBVKJXQZ';
+            sorted = freqOrder.split('').map(char => [char, frequencies[char] || 0]);
         }
+
         if (sorted.length === 0) return;
-        const maxFreq = sorted[0][1];
+
+        const maxFreq = Math.max(...Object.values(frequencies));
         const chartMaxHeight = 180;
+
         sorted.forEach(([char, freq]) => {
             const barHeight = maxFreq > 0 ? (freq / maxFreq) * chartMaxHeight : 0;
             const barContainer = document.createElement('div');
@@ -326,6 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- Interactive Grid ---
     function createKeyMapGrid() {
         ALPHABET.split('').forEach(char => {
             const entry = document.createElement('div');
@@ -350,12 +360,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const input = event.target;
         const cipherChar = input.dataset.char;
         const plainGuess = input.value.toUpperCase();
+
         Object.keys(userKey).forEach(key => {
             if (userKey[key] === plainGuess && key !== cipherChar) {
                 inputs[key].value = '';
                 delete userKey[key];
             }
         });
+
         if (plainGuess) {
             userKey[cipherChar] = plainGuess;
         } else {
@@ -364,6 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateDecryption();
     }
 
+    // --- Decryption and Hint Logic ---
     function updateDecryption() {
         const ciphertext = ciphertextDiv.textContent;
         const decryptedHtml = ciphertext.split('').map(char => {
@@ -390,6 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
+
         if (Object.keys(userKey).length >= sortedByFreq.length) {
             hintButton.disabled = true;
             hintButton.textContent = '完了';
@@ -399,11 +413,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function showPlaintextFreq() {
         const plaintextFrequencies = calculateFrequencies(PLAINTEXT);
         const chartElement = document.getElementById('plaintext-freq-chart');
-        drawFrequencyChart(plaintextFrequencies, chartElement, true);
+        drawFrequencyChart(plaintextFrequencies, chartElement, true); // Sort by frequency
         plaintextFreqSection.style.display = 'block';
         hint2Button.disabled = true;
     }
 
+    // --- Start the application ---
     initialize();
 });
 </script>
