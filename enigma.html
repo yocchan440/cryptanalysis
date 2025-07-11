@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enigma Simulator</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cutive+Mono&family=IM+Fell+English&display=swap');
+
+        :root {
+            --case-color: #3a3a3a;
+            --panel-color: #c5c5c5;
+            --key-color: #2c2c2c;
+            --key-text-color: #e0e0e0;
+            --lamp-off-color: #4b4b4b;
+            --lamp-off-glow: #2d2d2d;
+            --lamp-on-color: #ffd700;
+            --lamp-on-glow: #ffd700;
+            --wood-color: #6b4f3a;
+            --brass-color: #d4af37;
+        }
+
+        body {
+            background-color: #282c34;
+            color: var(--key-text-color);
+            font-family: 'Cutive Mono', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .enigma-machine {
+            background: linear-gradient(145deg, #5a3e2b, #7b5e4a);
+            border: 4px solid #2b1d14;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4), inset 0 0 15px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .title-plate {
+            background: var(--brass-color);
+            color: #3d2e1f;
+            font-family: 'IM Fell English', serif;
+            font-size: 2.5rem;
+            text-align: center;
+            padding: 5px 0;
+            border-radius: 5px;
+            border: 2px solid #a4882c;
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 1px #fff5d7;
+            font-weight: bold;
+        }
+
+        .main-panel {
+            background: var(--case-color);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.7);
+        }
+
+        .io-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .io-panel textarea {
+            width: 100%;
+            height: 100px;
+            background-color: #252525;
+            border: 2px solid var(--brass-color);
+            border-radius: 5px;
+            color: var(--lamp-on-color);
+            font-family: 'Cutive Mono', monospace;
+            font-size: 1.2rem;
+            padding: 10px;
+            box-sizing: border-box;
+            resize: none;
+        }
+        
+        .io-panel textarea:focus {
+            outline: none;
+            box-shadow: 0 0 10px var(--brass-color);
+        }
+
+        .settings-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #4a4a4a;
+            border-radius: 8px;
+        }
+
+        .rotor-settings, .reflector-settings, .plugboard-settings {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .settings-title {
+            font-family: 'IM Fell English', serif;
+            font-size: 1.5rem;
+            color: var(--brass-color);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--brass-color);
+            padding-bottom: 5px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .rotor-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .rotor-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .rotor-control label, .reflector-settings label, .plugboard-settings label {
+            font-size: 0.9rem;
+            color: var(--panel-color);
+        }
+
+        .rotor-control select, .rotor-control input, .reflector-settings select {
+            background-color: var(--key-color);
+            color: var(--key-text-color);
+            border: 1px solid var(--brass-color);
+            border-radius: 4px;
+            font-family: 'Cutive Mono', monospace;
+            text-align: center;
+            width: 60px;
+        }
+        
+        .rotor-position {
+            background-color: #1a1a1a;
+            border: 2px inset var(--brass-color);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8rem;
+            border-radius: 50%;
+            color: var(--lamp-on-color);
+        }
+
+        #plugboard {
+            width: 100%;
+            max-width: 220px;
+            background-color: var(--key-color);
+            color: var(--key-text-color);
+            border: 1px solid var(--brass-color);
+            border-radius: 4px;
+            padding: 5px;
+            font-size: 1rem;
+            text-transform: uppercase;
+        }
+
+        .lamp-board, .keyboard {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 10px;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .lamp {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--lamp-off-color);
+            color: #888;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 0 auto;
+            transition: all 0.1s ease-in-out;
+            box-shadow: inset 0 0 5px var(--lamp-off-glow);
+        }
+
+        .lamp.on {
+            background-color: var(--lamp-on-color);
+            color: #fff;
+            text-shadow: 0 0 5px #fff, 0 0 10px var(--lamp-on-glow), 0 0 15px var(--lamp-on-glow);
+            box-shadow: 0 0 10px var(--lamp-on-glow), 0 0 20px var(--lamp-on-glow);
+        }
+
+        .key {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--key-color);
+            color: var(--key-text-color);
+            border: 2px solid #1a1a1a;
+            box-shadow: 0 4px #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.07s ease-in-out;
+            margin: 0 auto;
+        }
+
+        .key:active, .key.pressed {
+            transform: translateY(2px);
+            box-shadow: 0 2px #111;
+            background-color: #3a3a3a;
+        }
+        
+        /* Keyboard Layout */
+        .lamp-board, .keyboard {
+            padding: 10px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .lamp-row, .key-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="enigma-machine">
+        <div class="title-plate">ENIGMA</div>
+        <div class="main-panel">
+            
+            <div class="settings-panel">
+                <div class="rotor-settings">
+                    <div class="settings-title">Rotors</div>
+                    <div class="rotor-controls">
+                        <div class="rotor-control">
+                            <label for="rotor3">Left</label>
+                            <select id="rotor3">
+                                <option>I</option><option>II</option><option selected>III</option><option>IV</option><option>V</option>
+                            </select>
+                            <input id="ring3" type="number" min="1" max="26" value="1">
+                            <div id="pos3" class="rotor-position">A</div>
+                        </div>
+                        <div class="rotor-control">
+                            <label for="rotor2">Middle</label>
+                            <select id="rotor2">
+                                <option>I</option><option selected>II</option><option>III</option><option>IV</option><option>V</option>
+                            </select>
+                            <input id="ring2" type="number" min="1" max="26" value="1">
+                            <div id="pos2" class="rotor-position">A</div>
+                        </div>
+                        <div class="rotor-control">
+                            <label for="rotor1">Right</label>
+                            <select id="rotor1">
+                                <option selected>I</option><option>II</option><option>III</option><option>IV</option><option>V</option>
+                            </select>
+                            <input id="ring1" type="number" min="1" max="26" value="1">
+                            <div id="pos1" class="rotor-position">A</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="reflector-settings">
+                    <div class="settings-title">Reflector</div>
+                    <select id="reflector">
+                        <option>A</option><option selected>B</option><option>C</option>
+                    </select>
+                </div>
+                <div class="plugboard-settings">
+                    <div class="settings-title">Plugboard</div>
+                    <input type="text" id="plugboard" placeholder="e.g. AB CD EF">
+                </div>
+            </div>
+
+            <div class="lamp-board"></div>
+
+            <div class="keyboard"></div>
+
+            <div class="io-panel">
+                <textarea id="input-text" placeholder="Type here or use the keyboard..."></textarea>
+                <textarea id="output-text" readonly placeholder="Output..."></textarea>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const rotorWirings = {
+            'I':    'EKMFLGDQVZNTOWYHXUSPAIBRCJ',
+            'II':   'AJDKSIRUXBLHWTMCQGZNPYFVOE',
+            'III':  'BDFHJLCPRTXVZNYEIWGAKMUSQO',
+            'IV':   'ESOVPZJAYQUIRHXLNFTGKDCMWB',
+            'V':    'VZBRGITYUPSDNHLXAWMJQOFECK'
+        };
+        const rotorTurnovers = {
+            'I': 'Q', 'II': 'E', 'III': 'V', 'IV': 'J', 'V': 'Z'
+        };
+        const reflectorWirings = {
+            'A': 'EJMZALYXVBWFCRQUONTSPIKHGD',
+            'B': 'YRUHQSLDPXNGOKMIEBFZCWVJAT',
+            'C': 'FVPJIAOYEDRZXWGCTKUQSBNMHL'
+        };
+
+        const lampBoard = document.querySelector('.lamp-board');
+        const keyboard = document.querySelector('.keyboard');
+        const keyLayout = [
+            'QWERTZUIOP',
+            'ASDFGHJKL',
+            'YXCVBNM'
+        ];
+
+        keyLayout.forEach(row => {
+            const lampRow = document.createElement('div');
+            lampRow.className = 'lamp-row';
+            const keyRow = document.createElement('div');
+            keyRow.className = 'key-row';
+
+            for (const char of row) {
+                const lamp = document.createElement('div');
+                lamp.className = 'lamp';
+                lamp.textContent = char;
+                lamp.dataset.key = char;
+                lampRow.appendChild(lamp);
+
+                const key = document.createElement('div');
+                key.className = 'key';
+                key.textContent = char;
+                key.dataset.key = char;
+                keyRow.appendChild(key);
+            }
+            lampBoard.appendChild(lampRow);
+            keyboard.appendChild(keyRow);
+        });
+        
+        const rotor1Select = document.getElementById('rotor1');
+        const rotor2Select = document.getElementById('rotor2');
+        const rotor3Select = document.getElementById('rotor3');
+        const ring1Select = document.getElementById('ring1');
+        const ring2Select = document.getElementById('ring2');
+        const ring3Select = document.getElementById('ring3');
+        const pos1Display = document.getElementById('pos1');
+        const pos2Display = document.getElementById('pos2');
+        const pos3Display = document.getElementById('pos3');
+        const reflectorSelect = document.getElementById('reflector');
+        const plugboardInput = document.getElementById('plugboard');
+        const inputText = document.getElementById('input-text');
+        const outputText = document.getElementById('output-text');
+
+        let positions = [0, 0, 0]; // 0-25 for A-Z
+
+        function updatePositionDisplays() {
+            pos1Display.textContent = ALPHABET[positions[0]];
+            pos2Display.textContent = ALPHABET[positions[1]];
+            pos3Display.textContent = ALPHABET[positions[2]];
+        }
+        
+        [pos1Display, pos2Display, pos3Display].forEach((display, i) => {
+            display.addEventListener('click', () => {
+                positions[i] = (positions[i] + 1) % 26;
+                updatePositionDisplays();
+            });
+        });
+
+        function getPlugboardMap() {
+            const map = {};
+            const pairs = plugboardInput.value.trim().toUpperCase().split(' ');
+            const used = new Set();
+            for (const pair of pairs) {
+                if (pair.length === 2 && !used.has(pair[0]) && !used.has(pair[1])) {
+                    map[pair[0]] = pair[1];
+                    map[pair[1]] = pair[0];
+                    used.add(pair[0]);
+                    used.add(pair[1]);
+                }
+            }
+            return map;
+        }
+
+        function stepRotors() {
+            const rotorTypes = [rotor1Select.value, rotor2Select.value, rotor3Select.value];
+            const turnover1 = ALPHABET.indexOf(rotorTurnovers[rotorTypes[0]]);
+            const turnover2 = ALPHABET.indexOf(rotorTurnovers[rotorTypes[1]]);
+
+            // Double step condition
+            if (positions[1] === turnover2) {
+                positions[1] = (positions[1] + 1) % 26;
+                positions[2] = (positions[2] + 1) % 26;
+            }
+            // Middle rotor step
+            if (positions[0] === turnover1) {
+                positions[1] = (positions[1] + 1) % 26;
+            }
+            // Right rotor always steps
+            positions[0] = (positions[0] + 1) % 26;
+            
+            updatePositionDisplays();
+        }
+        
+        function passThroughRotor(charIndex, rotorNum, reverse = false) {
+            const rotorType = [rotor1Select.value, rotor2Select.value, rotor3Select.value][rotorNum];
+            const ringSetting = [ring1Select.value, ring2Select.value, ring3Select.value][rotorNum] - 1;
+            const rotorPos = positions[rotorNum];
+            const wiring = rotorWirings[rotorType];
+
+            const shift = (rotorPos - ringSetting + 26) % 26;
+            const entryIndex = (charIndex + shift) % 26;
+
+            let exitChar;
+            if (!reverse) {
+                exitChar = wiring[entryIndex];
+            } else {
+                exitChar = ALPHABET[wiring.indexOf(ALPHABET[entryIndex])];
+            }
+            
+            const exitIndex = ALPHABET.indexOf(exitChar);
+            return (exitIndex - shift + 26) % 26;
+        }
+
+        function reflect(charIndex) {
+            const reflector = reflectorWirings[reflectorSelect.value];
+            return ALPHABET.indexOf(reflector[charIndex]);
+        }
+
+        function encrypt(char) {
+            char = char.toUpperCase();
+            if (!ALPHABET.includes(char)) return '';
+
+            stepRotors();
+
+            const plugboardMap = getPlugboardMap();
+            char = plugboardMap[char] || char;
+
+            let charIndex = ALPHABET.indexOf(char);
+
+            // Forward pass
+            charIndex = passThroughRotor(charIndex, 0);
+            charIndex = passThroughRotor(charIndex, 1);
+            charIndex = passThroughRotor(charIndex, 2);
+
+            // Reflector
+            charIndex = reflect(charIndex);
+
+            // Backward pass
+            charIndex = passThroughRotor(charIndex, 2, true);
+            charIndex = passThroughRotor(charIndex, 1, true);
+            charIndex = passThroughRotor(charIndex, 0, true);
+
+            let finalChar = ALPHABET[charIndex];
+            finalChar = plugboardMap[finalChar] || finalChar;
+            
+            return finalChar;
+        }
+
+        function handleKeyPress(key) {
+            const encryptedChar = encrypt(key);
+            if (encryptedChar) {
+                lightUp(encryptedChar);
+                inputText.value += key.toUpperCase();
+                outputText.value += encryptedChar;
+            }
+        }
+
+        function lightUp(char) {
+            const lamp = document.querySelector(`.lamp[data-key="${char}"]`);
+            if (lamp) {
+                lamp.classList.add('on');
+                setTimeout(() => lamp.classList.remove('on'), 300);
+            }
+        }
+        
+        const allKeys = keyLayout.join('');
+
+        keyboard.addEventListener('click', (e) => {
+            if (e.target.classList.contains('key')) {
+                const key = e.target.dataset.key;
+                handleKeyPress(key);
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toUpperCase();
+            if (allKeys.includes(key)) {
+                const keyElement = document.querySelector(`.key[data-key="${key}"]`);
+                if (keyElement) {
+                    keyElement.classList.add('pressed');
+                    handleKeyPress(key);
+                }
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toUpperCase();
+            if (allKeys.includes(key)) {
+                const keyElement = document.querySelector(`.key[data-key="${key}"]`);
+                if (keyElement) {
+                    keyElement.classList.remove('pressed');
+                }
+            }
+        });
+
+        inputText.addEventListener('input', (e) => {
+            // This is a simple way to handle pasted text.
+            // It resets the state and processes the whole text.
+            const currentInput = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
+            e.target.value = '';
+            outputText.value = '';
+            positions = [0, 0, 0];
+            updatePositionDisplays();
+            
+            for(const char of currentInput) {
+                handleKeyPress(char);
+            }
+        });
+
+        updatePositionDisplays();
+    });
+    </script>
+</body>
+</html>
