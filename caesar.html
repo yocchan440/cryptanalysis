@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シーザー暗号 解読体験</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #1c1e21;
+        }
+        .section {
+            margin-bottom: 2rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        textarea, input[type="number"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            margin-bottom: 1rem;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .output-box {
+            background-color: #f7f7f7;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 0.75rem;
+            min-height: 100px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: "Menlo", "Consolas", monospace;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        input[type="range"] {
+            flex-grow: 1;
+        }
+        .shift-value {
+            font-weight: bold;
+            font-size: 1.2rem;
+            min-width: 2ch;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>シーザー暗号 解読体験</h1>
+
+    <div class="section">
+        <h2>暗号化</h2>
+        <label for="encrypt-input">平文 (英語アルファベット大文字)</label>
+        <textarea id="encrypt-input" placeholder="HELLO WORLD"></textarea>
+
+        <label for="encrypt-shift">シフト数</label>
+        <div class="slider-container">
+            <input type="range" id="encrypt-shift" min="1" max="25" value="3">
+            <span id="encrypt-shift-value" class="shift-value">3</span>
+        </div>
+
+        <label for="encrypt-output">暗号文</label>
+        <div id="encrypt-output" class="output-box"></div>
+    </div>
+
+    <div class="section">
+        <h2>復号</h2>
+        <label for="decrypt-input">暗号文</label>
+        <textarea id="decrypt-input" placeholder="KHOOR ZRUOG"></textarea>
+
+        <label for="decrypt-shift">シフト数</label>
+        <div class="slider-container">
+            <input type="range" id="decrypt-shift" min="1" max="25" value="3">
+            <span id="decrypt-shift-value" class="shift-value">3</span>
+        </div>
+
+        <label for="decrypt-output">復号文</label>
+        <div id="decrypt-output" class="output-box"></div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Elements ---
+        const encryptInput = document.getElementById('encrypt-input');
+        const encryptShift = document.getElementById('encrypt-shift');
+        const encryptShiftValue = document.getElementById('encrypt-shift-value');
+        const encryptOutput = document.getElementById('encrypt-output');
+
+        const decryptInput = document.getElementById('decrypt-input');
+        const decryptShift = document.getElementById('decrypt-shift');
+        const decryptShiftValue = document.getElementById('decrypt-shift-value');
+        const decryptOutput = document.getElementById('decrypt-output');
+
+        // --- Core Caesar Cipher Logic ---
+        function caesarCipher(text, shift) {
+            return text.split('').map(char => {
+                const charCode = char.charCodeAt(0);
+                // Uppercase letters (A-Z)
+                if (charCode >= 65 && charCode <= 90) {
+                    return String.fromCharCode(((charCode - 65 + shift) % 26) + 65);
+                }
+                // Return other characters (like spaces) unchanged
+                return char;
+            }).join('');
+        }
+
+        // --- Update Functions ---
+        function updateEncryption() {
+            const plaintext = encryptInput.value.toUpperCase();
+            const shift = parseInt(encryptShift.value, 10);
+            encryptShiftValue.textContent = shift;
+            const ciphertext = caesarCipher(plaintext, shift);
+            encryptOutput.textContent = ciphertext;
+            decryptInput.value = ciphertext;
+            updateDecryption();
+        }
+
+        function updateDecryption() {
+            const ciphertext = decryptInput.value.toUpperCase();
+            const shift = parseInt(decryptShift.value, 10);
+            decryptShiftValue.textContent = shift;
+            // To decrypt, we shift in the opposite direction
+            const decryptedText = caesarCipher(ciphertext, 26 - shift);
+            decryptOutput.textContent = decryptedText;
+        }
+
+        // --- Event Listeners ---
+        encryptInput.addEventListener('input', updateEncryption);
+        encryptShift.addEventListener('input', updateEncryption);
+
+        decryptInput.addEventListener('input', updateDecryption);
+        decryptShift.addEventListener('input', updateDecryption);
+
+        // --- Initial Calls ---
+        updateEncryption();
+        updateDecryption();
+    });
+</script>
+
+</body>
+</html>
