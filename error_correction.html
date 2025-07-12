@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>誤り訂正符号シミュレータ</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 15px;
+            background-color: #f4f4f4;
+        }
+        #container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #1a1a1a;
+            border-bottom: 2px solid #eaeaea;
+            padding-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        button {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 15px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .stage {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .output {
+            font-family: "SF Mono", "Consolas", "Menlo", monospace;
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            word-wrap: break-word;
+            min-height: 20px;
+        }
+        .error {
+            font-weight: bold;
+            text-decoration: underline;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .output span {
+            font-weight: 500;
+            padding: 0 1px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>誤り訂正符号シミュレータ</h1>
+
+        <div id="step1" class="stage">
+            <h2>ステップ1: 情報源符号化 (ハフマン符号)</h2>
+
+            <h3>ハフマン符号表</h3>
+            <table id="huffman-table">
+                <thead>
+                    <tr>
+                        <th>数字</th>
+                        <th>符号語</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+
+            <label for="original-data">符号化するデータ (0-9の数字):</label>
+            <input type="text" id="original-data" placeholder="例: 0123456789">
+            
+            <h3>符号化されたビット列:</h3>
+            <div id="encoded-output" class="output"></div>
+            <p id="input-error" class="error"></p>
+        </div>
+
+        <div id="step2" class="stage">
+            <h2>ステップ2: 通信路符号化 (線形符号)</h2>
+
+            <label>符号化方式の選択:</label>
+            <div style="margin-bottom: 15px;">
+                <input type="radio" id="code-type-repetition" name="code-type" value="repetition" checked style="margin-right: 5px;">
+                <label for="code-type-repetition" style="font-weight: normal;">(3,1) 繰り返し符号</label>
+                <br>
+                <input type="radio" id="code-type-hamming" name="code-type" value="hamming" style="margin-right: 5px;">
+                <label for="code-type-hamming" style="font-weight: normal;">(7,4) ハミング符号</label>
+            </div>
+
+            <div id="repetition-code-section">
+                <h3>線形符号表 ((3,1)繰り返し符号)</h3>
+                <table id="repetition-code-table">
+                     <thead>
+                        <tr>
+                            <th>入力ビット</th>
+                            <th>符号語</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="hamming-code-section" style="display: none;">
+                <h3>線形符号表 ((7,4)ハミング符号)</h3>
+                <p>4ビットのデータに3ビットの冗長ビットを付加して7ビットの符号語を生成します。</p>
+                <table id="hamming-code-table">
+                     <thead>
+                        <tr>
+                            <th>入力データ (d1 d2 d3 d4)</th>
+                            <th>符号語 (d1 d2 d3 d4 p1 p2 p3)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+
+            <h3>通信路符号化されたビット列:</h3>
+            <div id="channel-encoded-output" class="output"></div>
+        </div>
+
+        <div id="step3" class="stage">
+            <h2>ステップ3: 通信路 (雑音)</h2>
+            <button id="add-noise-button">雑音を加える</button>
+            <button id="reset-noise-button" style="background-color: #6c757d; margin-left: 10px;">元に戻す</button>
+            <p>発生した誤り: <span id="error-count">0</span> ビット</p>
+            <h3>雑音が付加されたビット列:</h3>
+            <div id="noisy-output" class="output"></div>
+        </div>
+
+        <div id="step4" class="stage">
+            <h2>ステップ4: 復号・誤り訂正</h2>
+            <button id="decode-button">復号化する</button>
+            <h3>復号プロセス:</h3>
+            <div id="decoding-process-output" class="output" style="white-space: pre-wrap; text-align: left; max-height: 200px; overflow-y: auto;"></div>
+            <h3>復号されたデータ:</h3>
+            <div id="decoded-output" class="output"></div>
+            <p id="decoding-status" class="error"></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- グローバル変数 ---
+            let huffmanEncodedString = ''; // ステップ間で共有
+
+            // --- ステップ1: ハフマン符号化 ---
+            const huffmanCodes = {
+                '0': '00',
+                '1': '01',
+                '2': '100',
+                '3': '101',
+                '4': '1100',
+                '5': '1101',
+                '6': '1110',
+                '7': '11110',
+                '8': '111110',
+                '9': '111111'
+            };
+
+            const colors = ['#e6194B', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990'];
+            const codeColorMap = {};
+            Object.keys(huffmanCodes).forEach((key, index) => {
+                codeColorMap[key] = colors[index % colors.length];
+            });
+
+            const tableBody = document.querySelector('#huffman-table tbody');
+            for (const [char, code] of Object.entries(huffmanCodes)) {
+                const row = tableBody.insertRow();
+                const cell1 = row.insertCell(0);
+                const cell2 = row.insertCell(1);
+                cell1.textContent = char;
+                const codeSpan = document.createElement('span');
+                codeSpan.textContent = code;
+                codeSpan.style.color = codeColorMap[char];
+                codeSpan.style.fontWeight = 'bold';
+                cell2.appendChild(codeSpan);
+            }
+
+            const originalDataInput = document.getElementById('original-data');
+            const encodedOutput = document.getElementById('encoded-output');
+            const inputError = document.getElementById('input-error');
+
+            const processInput = () => {
+                const input = originalDataInput.value;
+                inputError.textContent = '';
+                encodedOutput.innerHTML = '';
+                huffmanEncodedString = ''; // Reset
+
+                if (!/^[0-9]*$/.test(input)) {
+                    inputError.textContent = 'エラー: 入力は0-9の数字のみにしてください。';
+                    channelEncodedOutput.innerHTML = ''; // Clear step 2 output on error
+                    return;
+                }
+
+                if (input.length === 0) {
+                    channelEncodedOutput.innerHTML = ''; // Clear step 2 output when input is empty
+                    return;
+                }
+
+                let rawString = '';
+                for (const char of input) {
+                    const code = huffmanCodes[char];
+                    rawString += code;
+                    const span = document.createElement('span');
+                    span.textContent = code;
+                    span.style.color = codeColorMap[char];
+                    encodedOutput.appendChild(span);
+                }
+                huffmanEncodedString = rawString;
+                // Trigger channel encoding whenever Huffman encoding is updated
+                encodeForChannel(); 
+            };
+
+            originalDataInput.addEventListener('input', processInput);
+
+            // --- ステップ2: 通信路符号化 ---
+            const channelEncodedOutput = document.getElementById('channel-encoded-output');
+
+            const repetitionCodeSection = document.getElementById('repetition-code-section');
+            const hammingCodeSection = document.getElementById('hamming-code-section');
+            const repetitionCodeTableBody = document.querySelector('#repetition-code-table tbody');
+            const hammingCodeTableBody = document.querySelector('#hamming-code-table tbody');
+
+            const repetitionRadio = document.getElementById('code-type-repetition');
+            const hammingRadio = document.getElementById('code-type-hamming');
+
+            // --- (3,1) 繰り返し符号 --- 
+            const linearCodeColors = {
+                '0': colors[0],
+                '1': colors[1]
+            };
+            repetitionCodeTableBody.innerHTML = `
+                <tr><td>0</td><td><span style="color: ${linearCodeColors['0']}; font-weight: bold;">000</span></td></tr>
+                <tr><td>1</td><td><span style="color: ${linearCodeColors['1']}; font-weight: bold;">111</span></td></tr>
+            `;
+
+            function encodeRepetition(bit) {
+                return bit.repeat(3);
+            }
+
+            // --- (7,4) ハミング符号 ---
+            const hammingColorMap = {};
+            const hammingColors = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000', '#aaffc3'];
+
+            function generateHammingTable() {
+                hammingCodeTableBody.innerHTML = '';
+                for (let i = 0; i < 16; i++) {
+                    const data = [(i >> 3) & 1, (i >> 2) & 1, (i >> 1) & 1, i & 1];
+                    const dataString = data.join('');
+                    
+                    if (!hammingColorMap[dataString]) {
+                        hammingColorMap[dataString] = hammingColors[i % hammingColors.length];
+                    }
+                    const color = hammingColorMap[dataString];
+
+                    const codeword = encodeHamming(data);
+                    const row = hammingCodeTableBody.insertRow();
+                    row.insertCell(0).textContent = data.join(' ');
+                    
+                    const codewordCell = row.insertCell(1);
+                    const codeSpan = document.createElement('span');
+                    codeSpan.textContent = codeword.join(' ');
+                    codeSpan.style.color = color;
+                    codeSpan.style.fontWeight = 'bold';
+                    codewordCell.appendChild(codeSpan);
+                }
+            }
+
+            function encodeHamming(data) { // data = [d1, d2, d3, d4]
+                // Correct parity bit calculation for a standard systematic (7,4) Hamming code
+                const p1 = (data[0] + data[1] + data[3]) % 2; // p1 = d1 + d2 + d4
+                const p2 = (data[0] + data[2] + data[3]) % 2; // p2 = d1 + d3 + d4
+                const p3 = (data[1] + data[2] + data[3]) % 2; // p3 = d2 + d3 + d4
+                return [data[0], data[1], data[2], data[3], p1, p2, p3];
+            }
+
+            // --- Main Encoding Logic ---
+            function encodeForChannel() {
+                if (huffmanEncodedString.length === 0) {
+                    channelEncodedOutput.innerHTML = '';
+                    return;
+                }
+
+                channelEncodedOutput.innerHTML = '';
+                const selectedCodeType = document.querySelector('input[name="code-type"]:checked').value;
+
+                if (selectedCodeType === 'repetition') {
+                    repetitionCodeSection.style.display = 'block';
+                    hammingCodeSection.style.display = 'none';
+                    for (const bit of huffmanEncodedString) {
+                        const encodedBit = encodeRepetition(bit);
+                        const span = document.createElement('span');
+                        span.textContent = encodedBit;
+                        span.style.color = linearCodeColors[bit];
+                        channelEncodedOutput.appendChild(span);
+                    }
+                } else { // hamming
+                    repetitionCodeSection.style.display = 'none';
+                    hammingCodeSection.style.display = 'block';
+                    let paddedHuffmanString = huffmanEncodedString;
+                    const remainder = paddedHuffmanString.length % 4;
+                    if (remainder !== 0) {
+                        paddedHuffmanString = paddedHuffmanString.padEnd(paddedHuffmanString.length + 4 - remainder, '0');
+                    }
+
+                    for (let i = 0; i < paddedHuffmanString.length; i += 4) {
+                        const dataChunkStr = paddedHuffmanString.slice(i, i + 4);
+                        const dataChunk = dataChunkStr.split('').map(Number);
+                        const encodedChunk = encodeHamming(dataChunk);
+                        
+                        const span = document.createElement('span');
+                        span.textContent = encodedChunk.join('');
+                        span.style.color = hammingColorMap[dataChunkStr];
+                        channelEncodedOutput.appendChild(span);
+                    }
+                }
+            }
+
+            // --- UI Event Listeners ---
+            repetitionRadio.addEventListener('change', encodeForChannel);
+            hammingRadio.addEventListener('change', encodeForChannel);
+
+            // --- Initialization ---
+            generateHammingTable();
+            processInput(); // Initial call to set the state
+
+            // --- ステップ3: 雑音の追加 ---
+            const addNoiseButton = document.getElementById('add-noise-button');
+            const resetNoiseButton = document.getElementById('reset-noise-button');
+            const noisyOutput = document.getElementById('noisy-output');
+            const errorCountSpan = document.getElementById('error-count');
+            let channelEncodedSpans = [];
+            let errorPositions = new Set();
+
+            function applyNoise() {
+                const totalLength = channelEncodedSpans.map(span => span.textContent.length).reduce((a, b) => a + b, 0);
+                if (totalLength === 0) {
+                    alert("先に符号化を行ってください。");
+                    return;
+                }
+
+                if (errorPositions.size >= totalLength) {
+                    alert("すべてのビットに誤りが発生しました。");
+                    return;
+                }
+
+                let randomPosition;
+                do {
+                    randomPosition = Math.floor(Math.random() * totalLength);
+                } while (errorPositions.has(randomPosition));
+
+                errorPositions.add(randomPosition);
+                errorCountSpan.textContent = errorPositions.size;
+
+                renderNoisyOutput();
+            }
+
+            function resetNoise() {
+                errorPositions.clear();
+                errorCountSpan.textContent = '0';
+                renderNoisyOutput();
+            }
+
+            function renderNoisyOutput() {
+                noisyOutput.innerHTML = '';
+                let currentIndex = 0;
+
+                channelEncodedSpans.forEach(originalSpan => {
+                    const newSpan = document.createElement('span');
+                    newSpan.style.color = originalSpan.style.color;
+                    let originalText = originalSpan.textContent;
+                    let newContent = '';
+
+                    for (let i = 0; i < originalText.length; i++) {
+                        const absoluteIndex = currentIndex + i;
+                        if (errorPositions.has(absoluteIndex)) {
+                            const originalBit = originalText[i];
+                            const flippedBit = originalBit === '0' ? '1' : '0';
+                            newContent += `<span class="error">${flippedBit}</span>`;
+                        } else {
+                            newContent += originalText[i];
+                        }
+                    }
+                    newSpan.innerHTML = newContent;
+                    noisyOutput.appendChild(newSpan);
+                    currentIndex += originalText.length;
+                });
+            }
+
+            addNoiseButton.addEventListener('click', applyNoise);
+            resetNoiseButton.addEventListener('click', resetNoise);
+
+            // 既存のエンコード関数を更新して、ステップ3をリセット/更新するようにする
+            function encodeForChannel() {
+                if (huffmanEncodedString.length === 0) {
+                    channelEncodedOutput.innerHTML = '';
+                    noisyOutput.innerHTML = '';
+                    errorPositions.clear();
+                    errorCountSpan.textContent = '0';
+                    return;
+                }
+
+                channelEncodedOutput.innerHTML = '';
+                channelEncodedSpans = []; // Reset
+                const selectedCodeType = document.querySelector('input[name="code-type"]:checked').value;
+
+                if (selectedCodeType === 'repetition') {
+                    repetitionCodeSection.style.display = 'block';
+                    hammingCodeSection.style.display = 'none';
+                    for (const bit of huffmanEncodedString) {
+                        const encodedBit = encodeRepetition(bit);
+                        const span = document.createElement('span');
+                        span.textContent = encodedBit;
+                        span.style.color = linearCodeColors[bit];
+                        channelEncodedOutput.appendChild(span);
+                        channelEncodedSpans.push(span);
+                    }
+                } else { // hamming
+                    repetitionCodeSection.style.display = 'none';
+                    hammingCodeSection.style.display = 'block';
+                    let paddedHuffmanString = huffmanEncodedString;
+                    const remainder = paddedHuffmanString.length % 4;
+                    if (remainder !== 0) {
+                        paddedHuffmanString = paddedHuffmanString.padEnd(paddedHuffmanString.length + 4 - remainder, '0');
+                    }
+
+                    for (let i = 0; i < paddedHuffmanString.length; i += 4) {
+                        const dataChunkStr = paddedHuffmanString.slice(i, i + 4);
+                        const dataChunk = dataChunkStr.split('').map(Number);
+                        const encodedChunk = encodeHamming(dataChunk);
+                        
+                        const span = document.createElement('span');
+                        span.textContent = encodedChunk.join('');
+                        span.style.color = hammingColorMap[dataChunkStr];
+                        channelEncodedOutput.appendChild(span);
+                        channelEncodedSpans.push(span);
+                    }
+                }
+                // Reset noise when encoding changes
+                resetNoise();
+            }
+
+            // --- ステップ4: 復号・誤り訂正 ---
+            const decodeButton = document.getElementById('decode-button');
+            const decodingProcessOutput = document.getElementById('decoding-process-output');
+            const decodedOutput = document.getElementById('decoded-output');
+            const decodingStatus = document.getElementById('decoding-status');
+
+            // (3,1) 繰り返し符号の復号
+            function decodeRepetition(chunk) {
+                const zeros = (chunk.match(/0/g) || []).length;
+                const ones = (chunk.match(/1/g) || []).length;
+                const correctedBit = zeros > ones ? '0' : '1';
+                const isCorrected = chunk.split('').filter(b => b === correctedBit).length !== 3;
+                const process = `受信: ${chunk} -> 多数決 -> 訂正後: ${correctedBit}` + (isCorrected ? ' (誤り訂正)' : ' (誤りなし)');
+                return { correctedBit, process };
+            }
+
+            // (7,4) ハミング符号の復号
+            function decodeHamming(chunk) {
+                const r = chunk.split('').map(Number);
+                // Correct syndrome calculation based on the corrected encoding
+                const s1 = (r[0] + r[1] + r[3] + r[4]) % 2; // p1 check
+                const s2 = (r[0] + r[2] + r[3] + r[5]) % 2; // p2 check
+                const s3 = (r[1] + r[2] + r[3] + r[6]) % 2; // p3 check
+                const syndrome = s3 * 4 + s2 * 2 + s1;
+
+                let process = `受信: ${chunk} -> シンドローム: ${s3}${s2}${s1} (=${syndrome}) -> `;
+                let correctedChunk = [...r];
+                let uncorrectable = false;
+
+                if (syndrome > 0) {
+                    // Correct syndrome-to-error-position mapping (1-based index)
+                    const errorPositionMap = { 1: 5, 2: 6, 3: 1, 4: 7, 5: 2, 6: 3, 7: 4 };
+                    const errorPos = errorPositionMap[syndrome];
+                    
+                    if (errorPos) {
+                        process += `ビット ${errorPos} に誤り検出 -> `;
+                        correctedChunk[errorPos - 1] = 1 - correctedChunk[errorPos - 1]; // Flip the bit
+                        process += `訂正後: ${correctedChunk.join('')}`;
+                    } else {
+                        // This case occurs if there are 2 or more errors, resulting in a valid-looking but incorrect syndrome
+                        process += '訂正不可能な誤りです。';
+                        uncorrectable = true;
+                    }
+                } else {
+                    process += "誤りなし";
+                }
+
+                const dataBits = correctedChunk.slice(0, 4).join('');
+                return { correctedData: dataBits, process, uncorrectable };
+            }
+
+            // ハフマン復号
+            const reversedHuffmanCodes = Object.fromEntries(Object.entries(huffmanCodes).map(([k, v]) => [v, k]));
+            function huffmanDecode(bitString) {
+                let decoded = '';
+                let currentCode = '';
+                for (const bit of bitString) {
+                    currentCode += bit;
+                    if (reversedHuffmanCodes[currentCode]) {
+                        decoded += reversedHuffmanCodes[currentCode];
+                        currentCode = '';
+                    }
+                }
+                if (currentCode.length > 0) return null; // Incomplete code at the end
+                return decoded;
+            }
+
+            decodeButton.addEventListener('click', () => {
+                const noisyString = noisyOutput.innerText.replace(/\s/g, '');
+                if (noisyString.length === 0) {
+                    alert("ステップ3で雑音が付加されたビット列がありません。");
+                    return;
+                }
+
+                decodingProcessOutput.innerHTML = '';
+                decodedOutput.innerHTML = '';
+                decodingStatus.textContent = '';
+                decodingStatus.className = '';
+
+                const selectedCodeType = document.querySelector('input[name="code-type"]:checked').value;
+                let correctedBitString = '';
+                let processLog = '';
+                let uncorrectableError = false;
+
+                if (selectedCodeType === 'repetition') {
+                    if (noisyString.length % 3 !== 0) {
+                        decodingStatus.textContent = "エラー: ビット列の長さが3の倍数ではありません。";
+                        decodingStatus.className = 'error';
+                        return;
+                    }
+                    for (let i = 0; i < noisyString.length; i += 3) {
+                        const chunk = noisyString.slice(i, i + 3);
+                        const { correctedBit, process } = decodeRepetition(chunk);
+                        correctedBitString += correctedBit;
+                        processLog += process + '\n';
+                    }
+                } else { // hamming
+                    if (noisyString.length % 7 !== 0) {
+                        decodingStatus.textContent = "エラー: ビット列の長さが7の倍数ではありません。";
+                        decodingStatus.className = 'error';
+                        return;
+                    }
+                    
+                    let uncorrectableChunk = false;
+                    for (let i = 0; i < noisyString.length; i += 7) {
+                        const chunk = noisyString.slice(i, i + 7);
+                        const { correctedData, process, uncorrectable } = decodeHamming(chunk);
+                        if (uncorrectable) {
+                            uncorrectableError = true;
+                        }
+                        correctedBitString += correctedData;
+                        processLog += process + '\n';
+                    }
+                }
+
+                decodingProcessOutput.textContent = processLog;
+                const finalDecodedData = huffmanDecode(correctedBitString);
+
+                if (uncorrectableError) {
+                    decodingStatus.textContent = "復号に失敗しました。ハミング符号は2ビット以上の誤りを訂正できません。";
+                    decodingStatus.className = 'error';
+                    decodedOutput.textContent = '';
+                } else if (finalDecodedData === null) {
+                    decodingStatus.textContent = "復号に失敗しました。訂正後のビット列をハフマン復号できません。";
+                    decodingStatus.className = 'error';
+                    decodedOutput.textContent = '';
+                } else {
+                    decodedOutput.textContent = finalDecodedData;
+                    const originalInput = originalDataInput.value;
+                    if (finalDecodedData === originalInput) {
+                        decodingStatus.textContent = "復号に成功しました！";
+                        decodingStatus.className = 'success';
+                    } else {
+                        decodingStatus.textContent = "復号しましたが、元のデータと一致しません。訂正不可能な誤りが残っている可能性があります。";
+                        decodingStatus.className = 'error';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
