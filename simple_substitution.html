@@ -35,7 +35,7 @@
             text-align: center;
             margin-bottom: 2rem;
         }
-        #new-problem-button {
+        #explanation-button {
             padding: 0.6rem 1.5rem;
             font-size: 1.1rem;
             font-weight: 600;
@@ -46,7 +46,7 @@
             cursor: pointer;
             transition: background-color 0.2s;
         }
-        #new-problem-button:hover {
+        #explanation-button:hover {
             background-color: #0069d9;
         }
         .section {
@@ -175,7 +175,23 @@
 <div class="container">
     <h1>単一換字式暗号 解読体験</h1>
     <div class="controls-container">
-        <button id="new-problem-button">新しい問題</button>
+        <button id="explanation-button">説明</button>
+    </div>
+    <div id="explanation-section" class="section" style="display: none;">
+        <h2>単一換字式暗号について</h2>
+        <div class="explanation-content">
+            <h3>方式の概要</h3>
+            <p>単一換字式暗号は、一つの文字を別の一つの文字に置き換えるという単純なルールに基づいた暗号方式です。例えば、「A」を「Q」、「B」を「X」のように、アルファベット26文字をそれぞれ異なる文字に対応させる換字表（キー）を作成し、その表に従って暗号化します。</p>
+            
+            <h3>暗号化の手順</h3>
+            <p>平文（暗号化されていない文）の各文字を、事前に準備した換字表に従って、対応する文字に一つずつ変換していきます。例えば、換字表で「C」が「M」に対応している場合、平文中のすべての「C」は「M」に置き換えられます。</p>
+            
+            <h3>復号の手順</h3>
+            <p>暗号文を元の平文に戻すには、暗号化に使われた換字表の逆の操作を行います。つまり、暗号文の文字が換字表のどの文字から変換されたものかを探し、元の文字に置き換えていきます。例えば、「M」が「C」から変換されたものであれば、暗号文中の「M」をすべて「C」に戻します。</p>
+            
+            <h3>解読のための手法（頻度分析）</h3>
+            <p>この暗号は、言語の統計的な性質を利用した「頻度分析」によって解読できることがあります。一般的な英文では、「E」や「T」、「A」といった特定の文字が他の文字よりも頻繁に出現します。この性質を利用し、暗号文の中で最も頻繁に出現する文字が、平文で最も頻繁に出現する文字（例：「E」）に対応している可能性が高いと推測します。このようにして、文字の対応関係を一つずつ特定していくことで、換字表全体を復元し、最終的に暗号を解読することができます。</p>
+        </div>
     </div>
     <div class="section">
         <h2>暗号文</h2>
@@ -224,7 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const hintButton = document.getElementById('hint-button');
     const hint2Button = document.getElementById('hint2-button');
     const plaintextFreqSection = document.getElementById('plaintext-freq-section');
-    const newProblemButton = document.getElementById('new-problem-button');
+    const explanationButton = document.getElementById('explanation-button');
+    const explanationSection = document.getElementById('explanation-section');
 
     // --- Initialization ---
     function initialize() {
@@ -242,41 +259,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         hintButton.addEventListener('click', () => giveHint(sortedByFreq));
         hint2Button.addEventListener('click', showPlaintextFreq);
-        newProblemButton.addEventListener('click', resetApplication);
+        explanationButton.addEventListener('click', toggleExplanation);
     }
 
-    function resetApplication() {
-        // Reset keys and user progress
-        secretKey = {};
-        reverseSecretKey = {};
-        Object.keys(userKey).forEach(key => delete userKey[key]);
-
-        // Clear input fields
-        Object.values(inputs).forEach(input => input.value = '');
-
-        // Re-initialize the application state
-        generateKeys();
-        const ciphertext = applyKey(PLAINTEXT, secretKey);
-        ciphertextDiv.textContent = ciphertext;
-
-        const frequencies = calculateFrequencies(ciphertext);
-        drawFrequencyChart(frequencies, freqChartDiv, true);
-
-        // Reset hint buttons
-        hintButton.disabled = false;
-        hintButton.textContent = 'ヒント';
-        hint2Button.disabled = false;
-        plaintextFreqSection.style.display = 'none';
-
-        // Update event listeners with new frequency data
-        const sortedByFreq = Object.entries(frequencies).sort((a, b) => b[1] - a[1]);
-        // Clear old listeners before adding new ones to prevent memory leaks
-        const newHintButton = hintButton.cloneNode(true);
-        hintButton.parentNode.replaceChild(newHintButton, hintButton);
-        newHintButton.addEventListener('click', () => giveHint(sortedByFreq));
-        
-        updateDecryption();
+    function toggleExplanation() {
+        const isHidden = explanationSection.style.display === 'none';
+        explanationSection.style.display = isHidden ? 'block' : 'none';
     }
+
+    
 
     // --- Key Generation ---
     function generateKeys() {

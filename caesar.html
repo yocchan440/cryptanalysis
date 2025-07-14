@@ -72,6 +72,24 @@
             min-width: 2ch;
             text-align: center;
         }
+        .controls-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        #explanation-button {
+            padding: 0.6rem 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #explanation-button:hover {
+            background-color: #0069d9;
+        }
     </style>
 </head>
 <body>
@@ -79,10 +97,31 @@
 <div class="container">
     <h1>シーザー暗号 解読体験</h1>
 
+    <div class="controls-container">
+        <button id="explanation-button">説明</button>
+    </div>
+
+    <div id="explanation-section" class="section" style="display: none;">
+        <h2>シーザー暗号について</h2>
+        <div class="explanation-content">
+            <h3>概要</h3>
+            <p>シーザー暗号は、最も古く、最も単純な暗号の一つです。これは換字式暗号の一種で、平文の各文字を、アルファベット上で一定数だけシフト（ずらし）させた別の文字に置き換えます。例えば、シフト数が3の場合、「A」は「D」に、「B」は「E」に置き換えられます。</p>
+            
+            <h3>暗号化の方法</h3>
+            <p>平文の各文字に対して、決められたシフト数だけアルファベット順で後ろの文字に置き換えます。アルファベットの最後（Z）を超えた場合は、最初（A）に戻ります。例えば、シフト数3で「WORLD」を暗号化すると「ZRUOG」となります。</p>
+            
+            <h3>復号の方法</h3>
+            <p>暗号化とは逆の操作を行います。暗号文の各文字を、決められたシフト数だけアルファベット順で前の文字に置き換えます。アルファベットの最初（A）を超えた場合は、最後（Z）に戻ります。例えば、シフト数3で暗号化された「KHOOR」は、3つ前にずらすことで「HELLO」と復号できます。</p>
+            
+            <h3>解読方法</h3>
+            <p>シーザー暗号の鍵（シフト数）は25通りしかありません。そのため、鍵が分からない場合でも、シフト数を1から25まで順番にすべて試し、意味が通じる文章が出てくるものを探すことで、比較的簡単に解読することができます。この手法を総当たり攻撃（ブルートフォースアタック）と呼びます。</p>
+        </div>
+    </div>
+
     <div class="section">
         <h2>暗号化</h2>
         <label for="encrypt-input">平文 (英語アルファベット大文字)</label>
-        <textarea id="encrypt-input" placeholder="HELLO WORLD"></textarea>
+        <textarea id="encrypt-input">HELLO WORLD</textarea>
 
         <label for="encrypt-shift">シフト数</label>
         <div class="slider-container">
@@ -97,7 +136,7 @@
     <div class="section">
         <h2>復号</h2>
         <label for="decrypt-input">暗号文</label>
-        <textarea id="decrypt-input" placeholder="KHOOR ZRUOG"></textarea>
+        <textarea id="decrypt-input"></textarea>
 
         <label for="decrypt-shift">シフト数</label>
         <div class="slider-container">
@@ -122,6 +161,9 @@
         const decryptShift = document.getElementById('decrypt-shift');
         const decryptShiftValue = document.getElementById('decrypt-shift-value');
         const decryptOutput = document.getElementById('decrypt-output');
+
+        const explanationButton = document.getElementById('explanation-button');
+        const explanationSection = document.getElementById('explanation-section');
 
         // --- Core Caesar Cipher Logic ---
         function caesarCipher(text, shift) {
@@ -163,9 +205,13 @@
         decryptInput.addEventListener('input', updateDecryption);
         decryptShift.addEventListener('input', updateDecryption);
 
+        explanationButton.addEventListener('click', () => {
+            const isHidden = explanationSection.style.display === 'none';
+            explanationSection.style.display = isHidden ? 'block' : 'none';
+        });
+
         // --- Initial Calls ---
         updateEncryption();
-        updateDecryption();
     });
 </script>
 
